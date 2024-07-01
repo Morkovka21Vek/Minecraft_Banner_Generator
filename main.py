@@ -16,9 +16,10 @@ def closest(colors,color):
     index_of_smallest = np.where(distances==np.amin(distances))
     #print(index_of_smallest[0][0])
     smallest_distance = colors[index_of_smallest[0][0]]
-    return smallest_distance 
+    return smallest_distance
 
-#inpPath = input("Укажите пожалуйста полный путь до Вашей картинки 20 на 40: >>>")
+inpPath = input("Укажите пожалуйста полный путь до Вашей картинки 20 на 40: >>>")
+inpImg = Image.open(inpPath)
 
 def reducingColors(inpPath):
 	img = Image.open(inpPath) 
@@ -30,6 +31,26 @@ def reducingColors(inpPath):
 			else:
 				img.putpixel((x, y), tuple(closest(colors, img.getpixel((x, y)))))
     #return img
+
+def closestImageComparison(color1, color2):
+    colorNp1 = np.array([color1])
+    colorNp2 = np.array(color2)
+    distances = np.sqrt(np.sum((colorNp1-colorNp2)**2,axis=1))
+    return distances[0]
+
+def imageComparison(img, GenerateImg):
+    val = 0
+    for x in range(img.size[0]):
+        for y in range(img.size[1]):
+            #Comparison = None
+            #if len(img.getpixel((x, y))) > 3:
+            #    if img.getpixel((x, y))[3] != 0:
+            #        x = closestImageComparison(GenerateImg.getpixel((x, y))[:3], img.getpixel((x, y))[:3])
+            #else:
+            Comparison = closestImageComparison(GenerateImg.getpixel((x, y)), img.getpixel((x, y))[:3])
+            if not Comparison is None:
+                val += Comparison
+    return val
 
 #axarr[0].imshow(reducingColors(inpPath))
 
@@ -48,6 +69,9 @@ val = 0
 if not os.path.exists(path_to_save):
     os.makedirs(path_to_save)
 
+minComparison = None
+minComparisonImg = None
+
 with tqdm(total=total_size, unit="B", unit_scale=True) as progress_bar:
 	for imgBackCol in colorsImgs:
 		for count in range(1, 2):
@@ -58,7 +82,15 @@ with tqdm(total=total_size, unit="B", unit_scale=True) as progress_bar:
 						img = Image.new('RGB',(20, 40),(0,0,0))
 						img.paste(imgBackCol, mask=backgroundImg)
 						img.paste(imgCol, mask=maskIm)
-						img.save(os.path.join(path_to_save, str(val)+'.jpg'))
+						#img.save(os.path.join(path_to_save, str(val)+'.jpg'))
+						x = imageComparison(inpImg, img)
+						if minComparison is None:
+							minComparison = x
+							minComparisonImg = img
+						else:
+							if x < minComparison:
+								minComparison = x
+								minComparisonImg = img
 						val += 1
 		#imgCol = Image.new('RGB',(20, 40),tuple(colors[random.randint(0, len(colors)-1)]))
 		#maskIm = textures[random.randint(0, len(textures)-1)]
@@ -66,6 +98,8 @@ with tqdm(total=total_size, unit="B", unit_scale=True) as progress_bar:
 	#axarr[1].imshow(img)
 #plt.show()
 print(total_size, val)
+minComparisonImg.show()
+minComparisonImg.save("outImg.png")
 
 #img = Image.new('RGB',(20, 40),(0,0,0))
 #imgBackCol = Image.new('RGB',(20, 40),tuple(backCol))
