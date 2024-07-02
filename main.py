@@ -4,10 +4,13 @@ import matplotlib.pyplot as plt
 import os
 import random
 from tqdm import tqdm
+from numba import njit, prange
+import time
 colors = [[29, 29, 33], [176, 46, 38], [94, 124, 22], [131, 84, 50], [60, 68, 170], [137, 50, 184], [22, 156, 156], [157, 157, 151], 
   [71, 79, 82],[243, 139, 170], [128, 199, 31], [254, 216, 61], [58, 179, 218], [199, 78, 189], [249, 128, 29], [249, 255, 254]]
 
 #f, axarr = plt.subplots(1, 2)
+#sizeImg = (20, 40)
 
 def closest(colors,color):
     colorsNp = np.array(colors)
@@ -20,6 +23,7 @@ def closest(colors,color):
 
 inpPath = input("Укажите пожалуйста полный путь до Вашей картинки 20 на 40: >>>")
 inpImg = Image.open(inpPath)
+inpImgNp = np.array(inpImg)
 
 def reducingColors(inpPath):
 	img = Image.open(inpPath) 
@@ -32,24 +36,27 @@ def reducingColors(inpPath):
 				img.putpixel((x, y), tuple(closest(colors, img.getpixel((x, y)))))
     #return img
 
-def closestImageComparison(color1, color2):
-    colorNp1 = np.array([color1])
-    colorNp2 = np.array(color2)
-    distances = np.sqrt(np.sum((colorNp1-colorNp2)**2,axis=1))
-    return distances[0]
+@njit(fastmath = True, cache=True)#, parallel=True)
+def closestImageComparison(colorNp1, colorNp2):
+    #colorNp1 = np.array([color1])
+    #colorNp2 = np.array(color2)
+    distances = np.sqrt(np.sum((colorNp1-colorNp2)**2))#,axis=1))
+    return distances#[0]
 
-def imageComparison(img, GenerateImg):
+@njit(fastmath = True, cache=True, parallel=True)
+def imageComparison(imgNp, GenerateImgNp):
     val = 0
-    for x in range(img.size[0]):
-        for y in range(img.size[1]):
+    #GenerateImgNp = np.array(GenerateImg)
+    for x in prange(20):#range(img.size[0]):
+        for y in prange(40):#range(img.size[1]):
             #Comparison = None
             #if len(img.getpixel((x, y))) > 3:
             #    if img.getpixel((x, y))[3] != 0:
             #        x = closestImageComparison(GenerateImg.getpixel((x, y))[:3], img.getpixel((x, y))[:3])
             #else:
-            Comparison = closestImageComparison(GenerateImg.getpixel((x, y)), img.getpixel((x, y))[:3])
-            if not Comparison is None:
-                val += Comparison
+            Comparison = closestImageComparison(GenerateImgNp[y, x], imgNp[y, x][:3])
+            #if not Comparison is None:
+            val += Comparison
     return val
 
 #axarr[0].imshow(reducingColors(inpPath))
@@ -69,13 +76,15 @@ val = 0
 if not os.path.exists(path_to_save):
     os.makedirs(path_to_save)
 
-minComparison = None
+minComparison = float('inf')
 minComparisonImg = None
+
+stTime = time.time()
 
 with tqdm(total=total_size, unit="B", unit_scale=True) as progress_bar:
 	for imgBackCol in colorsImgs:
-		for count in range(1, 2):
-			for i in range(count):
+		for count in prange(1, 2):
+			for i in prange(count):
 				for maskIm in textures:
 					for imgCol in colorsImgs:
 						progress_bar.update(1)
@@ -83,21 +92,18 @@ with tqdm(total=total_size, unit="B", unit_scale=True) as progress_bar:
 						img.paste(imgBackCol, mask=backgroundImg)
 						img.paste(imgCol, mask=maskIm)
 						#img.save(os.path.join(path_to_save, str(val)+'.jpg'))
-						x = imageComparison(inpImg, img)
-						if minComparison is None:
+						x = imageComparison(inpImgNp, np.array(img))
+						if x < minComparison:
 							minComparison = x
 							minComparisonImg = img
-						else:
-							if x < minComparison:
-								minComparison = x
-								minComparisonImg = img
 						val += 1
 		#imgCol = Image.new('RGB',(20, 40),tuple(colors[random.randint(0, len(colors)-1)]))
 		#maskIm = textures[random.randint(0, len(textures)-1)]
 		#img.paste(imgCol, mask=maskIm)
 	#axarr[1].imshow(img)
 #plt.show()
-print(total_size, val)
+endTime = time.time()
+print(total_size, val, endTime-stTime)
 minComparisonImg.show()
 minComparisonImg.save("outImg.png")
 
