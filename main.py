@@ -103,7 +103,7 @@ with tqdm(total=total_size, unit="B", unit_scale=True) as progress_bar:
 	#axarr[1].imshow(img)
 #plt.show()
 endTime = time.time()
-print(total_size, val, endTime-stTime)
+print(total_size, val, endTime-stTime, minComparison)
 minComparisonImg.show()
 minComparisonImg.save("outImg.png")
 
